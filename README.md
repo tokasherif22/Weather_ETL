@@ -8,15 +8,6 @@ An automated end-to-end data pipeline that ingests daily weather data from a pub
 
 ![Architecture](weather_etl.drawio.png)
 
-```
-Open-Meteo API  →  raw JSON  →  PySpark (local)  →  Parquet  →  PostgreSQL
-                        ↑               ↑                             ↑
-                   fetch_data    transform_data                  load_data
-                   [Task 1]        [Task 2]                      [Task 3]
-                        └───────── Airflow DAG (@daily) ──────────────┘
-                                  Docker Compose
-```
-
 **Data flow:**
 1. Airflow triggers `fetch_data` → calls Open-Meteo API → saves raw JSON to a shared Docker volume
 2. Airflow triggers `transform_data` → PySpark reads JSON, explodes parallel arrays into rows, writes Parquet
@@ -136,16 +127,6 @@ CREATE TABLE weather_data (
 - **Idempotent upserts** — `INSERT ... ON CONFLICT (city, date) DO NOTHING` means the DAG can be re-triggered safely without creating duplicates.
 - **Docker volumes** — raw JSON and Parquet files are written to a shared volume, decoupling the fetch, transform, and load steps so each task can fail and retry independently.
 - **Custom Dockerfile** — extends the official Airflow image with Java (required by PySpark) and Python dependencies baked in.
-
----
-
-## Extending This Project
-
-- Add more cities by parameterizing the DAG with Airflow variables
-- Add a data quality check task between transform and load (e.g. row count validation)
-- Replace local Parquet storage with S3 or GCS for cloud-native storage
-- Add a Grafana dashboard connected to PostgreSQL to visualize the weather trends
-- Schedule with `@hourly` and switch to the Open-Meteo forecast endpoint for real-time data
 
 ---
 
